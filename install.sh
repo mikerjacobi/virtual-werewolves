@@ -1,5 +1,5 @@
 sudo adduser moderator
-sudo cp ./* /home/moderator
+sudo cp -r ./* /home/moderator
 sudo chown moderator /home/moderator/config/*
 sudo chgrp moderator /home/moderator/config/*
 sudo chown moderator /home/moderator/log/*
