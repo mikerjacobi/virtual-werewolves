@@ -1,0 +1,41 @@
+chmod: cannot access `/home/moderator/pipes': No such file or directory
+
+mafia@mafia:~/mafia$ sudo ./makeusers.sh 1
+setting up user: group1
+Adding user `group1' ...
+Adding new group `group1' (1002) ...
+Adding new user `group1' (1002) with group `group1' ...
+Creating home directory `/home/group1' ...
+Copying files from `/etc/skel' ...
+Enter new UNIX password: 
+Retype new UNIX password: 
+passwd: password updated successfully
+Changing the user information for group1
+Enter the new value, or press ENTER for the default
+	Full Name []: 
+	Room Number []: 
+	Work Phone []: 
+	Home Phone []: 
+	Other []: 
+Is the information correct? [Y/n] 
+mkdir: cannot create directory `/home/moderator/pipes/1tosD': No such file or directory
+chown: cannot access `/home/moderator/pipes/1tosD': No such file or directory
+chgrp: cannot access `/home/moderator/pipes/1tosD': No such file or directory
+chmod: cannot access `/home/moderator/pipes/1tosD': No such file or directory
+mkdir: cannot create directory `/home/moderator/pipes/sto1D': No such file or directory
+chown: cannot access `/home/moderator/pipes/sto1D': No such file or directory
+chgrp: cannot access `/home/moderator/pipes/sto1D': No such file or directory
+chmod: cannot access `/home/moderator/pipes/sto1D': No such file or directory
+mkfifo: cannot create fifo `/home/moderator/pipes/sto1D/sto1': No such file or directory
+chmod: cannot access `/home/moderator/pipes/sto1D/sto1': No such file or directory
+mkfifo: cannot create fifo `/home/moderator/pipes/1tosD/1tos': No such file or directory
+chmod: cannot access `/home/moderator/pipes/1tosD/1tos': No such file or directory
+chown: cannot access `/home/moderator/pipes/sto1D/sto1': No such file or directory
+chown: cannot access `/home/moderator/pipes/1tosD/1tos': No such file or directory
+chgrp: cannot access `/home/moderator/pipes/sto1D/sto1': No such file or directory
+chgrp: cannot access `/home/moderator/pipes/1tosD/1tos': No such file or directory
+chown: cannot access `/home/moderator/pipes/sto1D': No such file or directory
+chown: cannot access `/home/moderator/pipes/1tosD': No such file or directory
+chgrp: cannot access `/home/moderator/pipes/sto1D': No such file or directory
+chgrp: cannot access `/home/moderator/pipes/1tosD': No such file or directory
+
