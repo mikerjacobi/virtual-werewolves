@@ -48,7 +48,7 @@ def obscure():
     pass
     #while 1:
 	#os.system('ls '+pipeRoot+'* > /dev/null 2> /dev/null')
-#	time.sleep(.1)
+	#time.sleep(.1)
 
 def allow(pipes):
     global allowed
@@ -72,6 +72,7 @@ def connect(inputPipe):
         try:
             input=recv(inputPipe)[2]
         except:
+	    print 'test'
             pass
         if input=='connect':
             log(str(inputPipe)+' connected',1,0,1)
@@ -128,17 +129,17 @@ def recv(pipe):
     output=''
     while output=='':
         try:
-            msg='(cat '+pipeRoot+str(pipe)+'D/'+str(pipe)+') 2> /dev/null'
-            f=os.popen(msg)
-            output=f.read().split('\n')
-            f.close()
+	    f=open(pipeRoot+str(pipe)+'D/'+str(pipe),'r')
+	    output=f.read().split('\n')
+	    f.close()
 
             for i in range(len(output)):
                 if len(output[i])>0:
                     output[i]=output[i].split(':')
                     return output[i] 
         except Exception, p:
-            log('receive error:'+str(p),1,0,1)
+            #log('receive error:'+str(p),0,0,0)
+	    pass
 
 
 def log(msg, printBool,publicLogBool,moderatorLogBool):
@@ -171,19 +172,7 @@ def multiRecv(pipe, pipes,endTime):
     start = time.time()
     while 1:
 	verified=1
-        #if pipe in allowed:
         msg=recv(pipe)
-	    #if msg==None:
-		#continue
-	    #if pipe.split('to')[0]==msg[1]:
-		#verified=1
-	    #else:
-		#send('quit cheating!','sto'+pipe.split('to')[0])
-		#continue
-        #else:
-            #time.sleep(1)
-            #continue
-
         if verified and msg!=None and pipe in allowed:
             broadcast(msg[1]+'-'+msg[2], modPipes(pipe,allowed))
 	else:
