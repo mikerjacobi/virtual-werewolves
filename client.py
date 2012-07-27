@@ -11,12 +11,15 @@ sys.path.append('/home/moderator/')
 import communication as c
 from threading import Thread
 
+
 p = os.popen('whoami')#get user name
 id=p.readline().strip('\n').split('p')[1]
 p.close()
 
 inPipe='sto'+id
 outPipe=id+'tos'
+
+#c.allow([inPipe,outPipe])
 
 def listen():
     listenCheck=1
@@ -51,7 +54,7 @@ def send():
     c.send('connect',outPipe)
     while 1:
         msg=raw_input()#listen for user input
-        c.send(msg,outPipe)
+	c.send(msg,outPipe)
 
 listen()
 
