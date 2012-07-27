@@ -51,15 +51,9 @@ client.py – the program run by players
 
 
 Setup steps:
-1. Download the source code
-	sudo wget <host>/mafia.tar.gz
-2. Untar the code
-	sudo tar -zxvf mafia.tar.gz
-3. Navigate to the code directory
-	cd moderator
-4. Install the game
+1. Install the game
 	sudo ./install.sh
-5. Create players.  Call makeusers once for each player.  Three is minimum.
+2. Create players.  Call makeusers once for each player.  Three is minimum.
 	sudo ./mkusr.sh 1
 	sudo ./mkusr.sh 2
 	sudo ./mkusr.sh 3
