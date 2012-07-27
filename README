@@ -53,13 +53,10 @@ client.py – the program run by players
 Setup steps:
 1. Install the game
 	sudo ./install.sh
-2. Create players.  Call makeusers once for each player.  Three is minimum.
-	sudo ./mkusr.sh 1
-	sudo ./mkusr.sh 2
-	sudo ./mkusr.sh 3
+2. Create players. Call makeusers.py. Three is minimum.
+ 
+	sudo python makeusers.py 3
 
-	or 
-	sudo python makeusers.py 3 //create 3 players by recalling mkusr three times
  
 Playing Virtual Mafia
 Starting the server:
