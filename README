@@ -1,0 +1,100 @@
+Copyright (c)  2012 Mike Jacobi, Xu Zhang, Roya Ensafi, Jed Crandall
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3
+or any later version published by the Free Software Foundation;
+with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
+A copy of the license is included in the section entitled "GNU
+Free Documentation License".
+
+Virtual Werewolf Game
+werewolves@cs.unm.edu.
+
+Overview:
+Virtual Werewolf is a virtual remake of the game Werewolf.  Virtual Werewolf has an automated moderator that allows local clients to connect and play.  The game consists of townspeople and werewolves and cycles through rounds of debate and elimination.  It is the goal of the werewolves to conceal their identity such that they can eliminate the whole town.  The townspeople must identify the werewolves to save their town.  The werewolves win when all the townspeople die, and the townspeople win when the werewolves die.  Further, there is a witch character that is considered a townsperson but has special abilities. 
+
+Basic Game Instructions:
+Each game instance, there is a setup step, where roles are assigned to players and preliminary setup tasks are performed.  Afterwards, the actual game play occurs.  The gameplay loops through rounds consisting of night and day.  Each night, werewolves vote on a victim and special characters make their moves.  The witch is then allowed to take action /*Witch has two potions. The first is healing potion, which can be used to resurrect a player that is killed by a werewolf. The second is a poison, used during the night to eliminate one player. Each potion can only be used once per game.*/ in response to the werewolves.  Then, during the day, the townspeople debate on who they believe the werewolves are and vote on someone to eliminate.  In each voting situation, a tie will result in no one being eliminated.  Eliminated players may no longer participate.  
+
+A standard turn takes this form:
+1. Night – everyone goes to sleep
+	a.Werewolves wake up, debate, vote on a victim, sleep
+	b.Witch wakes up, is informed of werewolves vote, takes action, sleeps
+2. Day – everyone wakes up
+	a.Townspeople are informed of werewolves and/or witch victim
+	b.Townspeople debate, vote on a victim, sleep
+3.  Repeat
+
+Program architecture:
+communication.py – consists of helper methods used by server and (optionally) client
+	handleConnections(timeTillStart) – this method spawns a thread per possible connection
+	connect(inputPipe) – listens on <inputPipe> for a connection
+	killThreads(threads) – stops and deletes passed threads
+	broadcast(msg, pipes) – calls send on every member in pipes
+	send(msg, pipe) – writes to pipes, with error checking
+	recv(pipe) – read from pipes, with error checking
+	clear(pipe) – opens a pipe and dumps the input
+	multiRecv(pipe, pipes, endTime) – listens from <pipe> and broadcasts input to <pipes> for      <endTime> duration
+	groupChat(pipes, endTime) – calls multiRecv on each member in <pipes>
+	modPipes(pipe, pipes) – removes <pipe> from <pipes> so multiRecv doesn’t send msg back to original author of msg
+	poll(pipes, votetime) – spawns a vote thread on each member in pipes.  Calculates winner after votetime expires
+	vote(pipe, pipes) – waits for vote and broadcasts a valid vote to all members in pipes
+ 
+server.py – the automated moderator
+	removePlayer(player) – removes a player from the game
+	quitGame() – control c gracefully exits game
+	assign(all) – opens a config file associated with n number of players and randomly assigns roles to connected players
+	standardTurn() – night, wolftalk, wolfvote, day, towntalk, townvote. Removes players
+	main() – handles initial connections, calls assign() and loops through standardTurn()
+
+client.py – the program run by players
+	listens for user keyboard input and sends to the server.  Receives and prints server input.  Handles special case server input accordingly.
+
+
+Setup steps:
+1. Download the source code
+	sudo wget <host>/mafia.tar.gz
+2. Untar the code
+	sudo tar -zxvf mafia.tar.gz
+3. Navigate to the code directory
+	cd moderator
+4. Install the game
+	sudo ./install.sh
+5. Create players.  Call makeusers once for each player.  Three is minimum.
+	sudo ./mkusr.sh 1
+	sudo ./mkusr.sh 2
+	sudo ./mkusr.sh 3
+
+	or 
+	sudo python makeusers.py 3 //create 3 players by recalling mkusr three times
+ 
+Playing Virtual Mafia
+Starting the server:
+	1. sudo su moderator
+	2. cd ~
+	3. python server.py
+
+notes:
+The server is a python script called server.py that can be run by the moderator user.  There are variables in server.py that allow you to set the duration for wolf debate, wolf vote, witch vote, town debate, town vote, and a time till start.  The debate variables are used to set the duration of chatting prior to a vote.  The vote durations are set to determine the length of a vote session before the game moves on.  The time till start variable sets how long the server will wait for connections before starting the game.  The server is automated, so after setting these variables, it will run on its own until a winner emerges, eliminating players along the way.
+
+Playing the game:
+	1. ssh player@<host>
+	2. cd ~
+	3. python client.py
+
+notes:
+Players must use users that have been set up via makeusers.sh.  These users have permissions to access a set of private pipes.  A player connects to the mafia server in the set up phase by running client.py.  After the game begins, the server will assign roles randomly to each player and prompt the player to 1) debate with their teammates, or 2) vote on an action.  Eliminated players are notified of their death and removed from play.  Votes must be typed out exactly as they appear as prompted by the moderator.  
+
+The moderator has a set of commands that may be typed directly into the moderators console window:
+help - shows all available commands
+status - shows round number, townspeople IDs, wolf IDs, witch ID, and witch info
+kill <id> - eliminates a player from the game
+skip - skips the current session.  For example, skipping wolfchat will bring the game to wolfvote.
+	everything else typed into the console window is broadcasted to each player.
+
+Uninstall steps: <WARNING: this cannot be undone.  Player files will be lost.>
+	1. Modify uninstall.sh to include a userdel and groupdel for each Mafia player
+	2. Execute the uninstall
+		sudo <Mafia root>/uninstall.sh
+
+
+Using Werewolves requires at least one routable IP address that the students can SSH to.  If you run Linux in a virtual machine with the Werewolves game on it, the students will need to be able to SSH to the virtual machine somehow.  The two best ways to do this are to either use port forwarding (requires only on static IP address for the host) or to use a bridged adapted (this requires another static IP address for the virtual machine beyond any static IP addresses the host has). If you have any questions about how to set up a virtual machine with Werewolves on it, please email werewolves@cs.unm.edu.
