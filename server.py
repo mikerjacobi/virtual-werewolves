@@ -74,7 +74,14 @@ def removePlayer(player,giveSpeech):
         #c.broadcast(player+' was a townsperson.',all)
 	c.log(player+'-townsperson killed',1,0,1)
     if giveSpeech:
-        #c.broadcast('These are '+player+'s last words.', all)
+        c.broadcast('These are '+player+'s last words.', c.complement(player,all))
+	p='sto'+player[0]
+	try:
+		int(player[1])
+		p+=player[1]
+	except:
+		pass
+	c.send("Share your parting words.", p)
 	c.setLogChat(1)
         c.spawnDeathSpeech(player,all,deathspeechtime)
 	c.setLogChat(0)
@@ -161,7 +168,7 @@ def standardTurn():
 	c.broadcast("Werewolves, vote.", c.complement(wolves,all))
 	c.broadcast('Werewolves, you must vote on a victim to eat.  You have '+str(wolfvotetime)+' to vote.  Valid votes are '+str(all),wolves)
 	c.log('Werewolves vote',0,1,0)
-        wolfvote = c.poll(wolves,wolfvotetime, all, 'w', all)
+        wolfvote = c.poll(wolves,wolfvotetime, all, 'wolf', all)
 	c.broadcast('Werewolves, go to sleep.',c.complement(wolves,all))
         if len(wolfvote)!=1:
             c.broadcast('Tie', wolves)
@@ -203,8 +210,8 @@ def standardTurn():
                     witchmoves=['Pass']
 		c.send('Witch, the wolves didnt feed tonight.  Valid votes are '+str(witchmoves),witchPlayer)
 
-            #witch voting 
-            witchVote=c.poll(witch,witchvotetime,witchmoves,'W',all)
+            #witch voting
+            witchVote=c.poll(witch,witchvotetime,witchmoves,'witch',all)
             nonwitch=[]
             for p in all:
                 if p!=witch[0]:
@@ -251,7 +258,7 @@ def standardTurn():
 
 	c.log('Townspeople vote',0,1,0)
 	c.broadcast('Townspeople, you have '+str(townvotetime)+' seconds to cast your votes on who to hang. Valid votes are '+str(all), all)
-        killedPlayer = c.poll(all, townvotetime, all, 't', all)
+        killedPlayer = c.poll(all, townvotetime, all, 'town', all)
         if len(killedPlayer)!=1:
             msg = 'The vote resulted in a tie between players: '+str(killedPlayer)+', so nobody dies today.'
             c.broadcast(msg, all)
