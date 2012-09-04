@@ -219,7 +219,7 @@ targets=[]
 character=""
 
 def poll(passedVoters, duration, passedValidTargets, passedCharacter, everyone):
-    global votes,voteAllowDict,allowed,votesReceived,logChat,votetime,voters,targets
+    global votes,voteAllowDict,allowed,votesReceived,logChat,votetime,voters,targets, character
 	
     votetime=1
     voters=passedVoters
@@ -254,10 +254,14 @@ def vote(voter, target):#w indicates which group is voting
 			votes[target]+=1
 		except:
 			votes[target]=1
+
+		print 'c:'+character
+
 		if character=="witch":
 			broadcast("Witch voted",all)
 		elif character=="wolf":
-			broadcast(voter+' voted for '+str(i[2]),pipes)
+			#broadcast(voter+' voted for '+str(i[2]),pipes)
+			broadcast(voter+' voted for '+target,voters)
 			broadcast("Wolf vote received.", complement(voters,all))
 		else:#townsperson vote
 			broadcast(voter+' voted for '+target,all)

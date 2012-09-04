@@ -13,27 +13,28 @@ import signal
 import communication as c
 from threading import Thread
 
+i={}
+inputVars=open('mafia.config','r').read().split('\n')
+for var in inputVars:
+	var=var.split('=')
+	key=var[0]
+	try:#if a line doesn't have an = sign
+		value=var[1]
+	except:
+		continue
+	i[key]=value
+
 logFile=''
 
 #time parameters
-timeTillStart=60
-wolftalktime=120
-wolfvotetime=60
-townvotetime=60
-towntalktime=240
-witchvotetime=60
-deathspeechtime=60
-test=0
-
-#test time params
-#timeTillStart=20
-#wolftalktime=60
-#wolfvotetime=60
-#townvotetime=60
-#towntalktime=60
-#witchvotetime=60
-#deathspeechtime=20
-
+timeTillStart=int(i['timeTillStart'])
+wolftalktime=int(i['wolfTalkTime'])
+wolfvotetime=int(i['wolfVoteTime'])
+townvotetime=int(i['townVoteTime'])
+towntalktime=int(i['townTalkTime'])
+witchvotetime=int(i['witchVoteTime'])
+deathspeechtime=int(i['deathSpeechTime'])
+test=int(i['test'])
 
 start = time.time()
 
@@ -43,7 +44,7 @@ wolves=[]
 townspeople=[]
 witch=[]
 
-potions=[1,1]#[kill,heal]
+potions=[int(i['kill']),int(i['heal'])]#[kill,heal]
 
 round=1
 
@@ -105,7 +106,7 @@ def quitGame(Signal, frame):
     msg='Game is over.'
     if not test:
     	os.system('echo "'+msg+'" | wall')
-    os.system('killall -s 9 cat')
+    #os.system('killall -s 9 cat')
     os.system('killall -s 9 sh')
     os.kill(os.getpid(),signal.SIGKILL)
 signal.signal(signal.SIGINT, quitGame)
@@ -227,10 +228,10 @@ def standardTurn():
 		c.send('The witch healed you!',wolfvote[0])
 		c.log('Witch healed '+wolfvote[0],0,0,1)
                 wolfkill=0
-                potions[1]=0
+                potions[1]-=1
             else:
                 witchkill=1
-                potions[0]=0
+                potions[0]-=1
 	        c.broadcast('Witch, close your eyes',all)
         #**************END WITCH************************
 
