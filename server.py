@@ -16,13 +16,16 @@ from threading import Thread
 i={}
 inputVars=open('mafia.config','r').read().split('\n')
 for var in inputVars:
-	var=var.split('=')
+	var=var.strip('\n').split('=')
 	key=var[0]
 	try:#if a line doesn't have an = sign
 		value=var[1]
 	except:
 		continue
 	i[key]=value
+
+#pass the necessary input variables into the communication script
+c.setVars(i['readVulnerability'],i['imposterMode'])
 
 logFile=''
 
@@ -35,7 +38,6 @@ towntalktime=int(i['townTalkTime'])
 witchvotetime=int(i['witchVoteTime'])
 deathspeechtime=int(i['deathSpeechTime'])
 test=int(i['test'])
-
 start = time.time()
 
 #group people by roles
@@ -224,7 +226,7 @@ def standardTurn():
 		c.log('Witch passed',1,1,1)
 		c.broadcast('Witch, close your eyes',all)
             elif witchVote[0]=='Heal':
-                c.broadcast('The witch used the health potion!',all)
+                c.broadcast('The witch used a health potion!',all)
 		c.send('The witch healed you!',wolfvote[0])
 		c.log('Witch healed '+wolfvote[0],0,0,1)
                 wolfkill=0
@@ -311,27 +313,30 @@ def main():
     global all,round
 
 
-    nextround=open('log/nextround','r')
-    next=int(nextround.readline().strip('\n'))
-    nextround.close()
-    nextround=open('log/nextround','w')
-    nextround.write(str(next+1))
-    nextround.close()
-
-    msg='Game '+str(next)+' starts in '+str(timeTillStart)+' seconds.'
-    if not test:
-	os.system('echo "'+msg+'" | wall')
 
     if test:
 	name='log/dummy.log'
-	moderatorLogName='log/dummyM.log'
+	moderatorLogName='log/dummy-m.log'
+	next=9999
     else:
+    	nextround=open('log/nextround','r')
+    	next=int(nextround.readline().strip('\n'))
+    	nextround.close()
+    	nextround=open('log/nextround','w')
+   	nextround.write(str(next+1))
+   	nextround.close()
+    	msg='Game '+str(next)+' starts in '+str(timeTillStart)+' seconds.'
+	os.system('echo "'+msg+'" | wall')
     	name='log/'+str(next)+'.log'
         moderatorLogName='log/'+str(next)+'m.log'
-    #logFile=open(name,'w')
+
     c.setLogFileNames(name,moderatorLogName)
-    os.system('touch '+moderatorLogName)
-    os.system('chmod 700 '+moderatorLogName)
+    if i['moderatorLogMode']==1:
+	os.system('touch '+moderatorLogName)
+	os.system('chmod 700 '+moderatorLogName)
+    else:
+    	os.system('cp log/template '+moderatorLogName)
+
     c.log('GAME: '+str(next),1,1,1)
 
     t=Thread(target=listenerThread,args=[])
@@ -339,18 +344,6 @@ def main():
     c.log('\nmoderator listener thread started',1,0,1)
 
     all=c.handleConnections(timeTillStart)
-
-    '''
-    inc=5
-    while (timeTillStart-(time.time()-start))>0:
-        tts=int(timeTillStart-(time.time()-start))
-        if tts==3:
-            inc=1
-        if tts%inc==0 and tts!=0: 
-            c.broadcast('game starts in '+str(tts)+'s', all)
-            time.sleep(1) 
-    '''
-    #c.sleep(timeTillStart)
 
     #ot=Thread(target=c.obscure,args=[])
     #ot.start()

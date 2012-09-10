@@ -23,6 +23,15 @@ allowed=[]
 logChat=0
 current=0
 
+readVulnerability=1
+imposterMode=1
+def setVars(passedReadVulnerability, passedImposterMode):
+    #descriptions of these variables can be seen in the mafia.config file
+    global readVulnerability, imposterMode
+    readVulnerability=int(passedReadVulnerability)
+    imposterMode=int(passedImposterMode)
+
+
 def complement(x,y):
     z=[]
     for val in y:
@@ -68,7 +77,7 @@ def handleConnections(timeTillStart):
         t=Thread(target=connect,args=[str(c)+'tos'])
 	#allowed.append(str(c)+'tos')
         t.start()
-    sleep(timeTillStart)
+    sleep(int(timeTillStart))
     notStop=0
     all=conns
     return conns
@@ -87,7 +96,7 @@ def connect(inputPipe):
 		out='sto'+str(int(inputPipe[0]+inputPipe[1]))
 	    except:
 		out='sto'+inputPipe[0]
-            send('Connected',out)
+            send('You are connected.  Please wait for the game to start.',out)
             conns.append(inputPipe)
 
 
@@ -131,15 +140,28 @@ def send(msg, pipe):
         log('send error:'+str(p),1,0,1)
 
 def recv(pipe):
+	global readVulnerability, imposterMode
         try:
-	    f=open(pipeRoot+str(pipe)+'D/'+str(pipe),'r')
-	    output=f.read().split('\n')
-	    f.close()
+	    if readVulnerability==0:
+	    	f=open(pipeRoot+str(pipe)+'D/'+str(pipe),'r')
+	    	output=f.read().split('\n')
+	    	f.close()
+	    else:
+		msg='(cat '+pipeRoot+str(pipe)+'D/'+str(pipe)+') 2> /dev/null'
+            	f=os.popen(msg)
+            	output=f.read().split('\n')
+            	f.close()		
 
             for i in range(len(output)):
                 if len(output[i])>0:
                     output[i]=output[i].split(':')
-                    return output[i] 
+		    try:
+            		moniker=str(int(pipe[0]+pipe[1]))
+        	    except:
+	            	moniker=pipe[0]
+
+		    if (output[i][1]=='s' or output[i][1]==moniker or imposterMode==1):
+                    	return output[i] 
         except Exception, p:
             #log('receive error:'+str(p),0,0,0)
 	    pass
@@ -180,7 +202,7 @@ def multiRecv(pipe, pipes,endTime):
         msg=recv(pipe)
 
 	#if someones giving a deathspeech
-	if deathspeech and pipe==deadGuy:
+	if verified and deathspeech and pipe==deadGuy:
 		broadcast(msg[1]+'-'+msg[2], modPipes(pipe,all))
 
 	#if were voting
