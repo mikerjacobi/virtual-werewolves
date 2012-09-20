@@ -25,6 +25,7 @@ current=0
 
 readVulnerability=1
 imposterMode=1
+isSilent=1
 def setVars(passedReadVulnerability, passedImposterMode):
     #descriptions of these variables can be seen in the mafia.config file
     global readVulnerability, imposterMode
@@ -240,8 +241,8 @@ voters=[]
 targets=[]
 character=""
 
-def poll(passedVoters, duration, passedValidTargets, passedCharacter, everyone):
-    global votes,voteAllowDict,allowed,votesReceived,logChat,votetime,voters,targets, character
+def poll(passedVoters, duration, passedValidTargets, passedCharacter, everyone, isUnanimous, passedIsSilent):
+    global votes,voteAllowDict,allowed,votesReceived,logChat,votetime,voters,targets, character, isSilent
 	
     votetime=1
     voters=passedVoters
@@ -249,27 +250,39 @@ def poll(passedVoters, duration, passedValidTargets, passedCharacter, everyone):
     votes={}
     targets=passedValidTargets
     character=passedCharacter
+    isSilent=passedIsSilent
 
     sleep(duration+1)
     log(str(votes),1,logChat,1)
 
-    winner=[]
+    results=[]
     mode=0
     for v in votes.keys():
         if votes[v]>mode:
             mode=votes[v]
-            winner=[v]
+            results=[v]
         elif votes[v]==mode:
-            winner.append(v)
+            results.append(v)
+
+    #this var signifies the class of result
+    #0 - result=victim; 1 - vote not unan; 2 - vote is tie
+    resultType=0
+	
+    if int(isUnanimous) and mode!=len(passedVoters): #the voteCount of the winner is not equal the number of voters
+	resultType=1
+    elif len(results)>1 or len(results)==0:
+	resultType=2
 
     validTargets=[]
-    voters=[]
     votetime=0
-    return winner
+    voters=[]    
 
-def vote(voter, target):#w indicates which group is voting
-        #everyone is used to broadcast, to hide the witch and wolves better.
-        global votes,votesReceived,voters,targets,character
+    return results,resultType
+
+def vote(voter, target):
+        global votes,votesReceived,voters,targets,character,isSilent
+
+	respondToVoter='sto'+voter.split('to')[0]
 
 	if target in targets:
 		try:
@@ -277,21 +290,40 @@ def vote(voter, target):#w indicates which group is voting
 		except:
 			votes[target]=1
 
-		print 'c:'+character
+		#message[0] is sent to who[0]; 1 to 1; etc.
+		messages=[]
+		who=[]
+
+		log(voter+" voted for "+target,1,0,1)
 
 		if character=="witch":
-			broadcast("Witch voted",all)
+			messages.append("Witch voted")
+			who.append(all)
+			#broadcast("Witch voted",all)
 		elif character=="wolf":
-			#broadcast(voter+' voted for '+str(i[2]),pipes)
-			broadcast(voter+' voted for '+target,voters)
-			broadcast("Wolf vote received.", complement(voters,all))
+			if isSilent:
+				messages.append(voter+' voted.')
+			else:
+				messages.append(voter+' voted for '+target)
+			who.append(voters)
+
+			messages.append("Wolf vote received.")
+			who.append(complement(voters,all))
 		else:#townsperson vote
-			broadcast(voter+' voted for '+target,all)
+			if isSilent:
+				messages.append(voter+' voted.')
+			else:
+				messages.append(voter+' voted for '+target)
+			who.append(all)
+
+		for i in range(len(messages)):
+			broadcast(messages[i],who[i])
+
 		votesReceived+=1
 		if votesReceived==len(voters):
 			skip()
 	else:
-		send('invalid vote: '+target,voter)
+		send('invalid vote: '+target,respondToVoter)
 
 def spawnDeathSpeech(pipe,all,endtime):
     global deathspeech, deadGuy

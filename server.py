@@ -104,12 +104,12 @@ def quitGame(Signal, frame):
     global all
     c.broadcast('close',all)
     c.log('\nGAME FORCE QUIT BY MODERATOR',1,1,1)
-    os.system('chmod 744 log/*m.log')
+    os.system('chmod 744 log/*m.log 2> /dev/null')
     msg='Game is over.'
     if not test:
     	os.system('echo "'+msg+'" | wall')
     #os.system('killall -s 9 cat')
-    os.system('killall -s 9 sh')
+    os.system('killall -s 9 sh 2> /dev/null')
     os.kill(os.getpid(),signal.SIGKILL)
 signal.signal(signal.SIGINT, quitGame)
 
@@ -171,12 +171,16 @@ def standardTurn():
 	c.broadcast("Werewolves, vote.", c.complement(wolves,all))
 	c.broadcast('Werewolves, you must vote on a victim to eat.  You have '+str(wolfvotetime)+' to vote.  Valid votes are '+str(all),wolves)
 	c.log('Werewolves vote',0,1,0)
-        wolfvote = c.poll(wolves,wolfvotetime, all, 'wolf', all)
+        wolfvote,t=c.poll(wolves,wolfvotetime, all, 'wolf', all, i['wolfUnanimous'],i['wolfSilentVote'])
 	c.broadcast('Werewolves, go to sleep.',c.complement(wolves,all))
-        if len(wolfvote)!=1:
+	if t==1:
+	    c.broadcast('Vote not Unanimous, nobody eaten.', wolves)
+	    c.log('Werewolves not unanimous',0,1,0)
+        #elif len(wolfvote)!=1:
+	elif t==2:
             c.broadcast('Tie', wolves)
 	    c.log('Werewolves vote tie',0,1,0)
-        else:
+        elif t==0:
             msg="Werewolves, you selected to eat "+str(wolfvote[0])
             wolfkill=1
             c.broadcast(msg,wolves)
@@ -214,15 +218,15 @@ def standardTurn():
 		c.send('Witch, the wolves didnt feed tonight.  Valid votes are '+str(witchmoves),witchPlayer)
 
             #witch voting
-            witchVote=c.poll(witch,witchvotetime,witchmoves,'witch',all)
+            witchVote,t=c.poll(witch,witchvotetime,witchmoves,'witch',all,0,0)
             nonwitch=[]
             for p in all:
                 if p!=witch[0]:
                     nonwitch.append(p)
             c.clear(nonwitch)#clear queued chat messages
 
-            print 'wv:'+str(witchVote)
-            if witchVote==[] or witchVote[0]=='Pass':
+            #print 'wv:'+str(witchVote)
+            if witchVote==[] or witchVote[0]=='Pass' or t:
 		c.log('Witch passed',1,1,1)
 		c.broadcast('Witch, close your eyes',all)
             elif witchVote[0]=='Heal':
@@ -261,12 +265,16 @@ def standardTurn():
 
 	c.log('Townspeople vote',0,1,0)
 	c.broadcast('Townspeople, you have '+str(townvotetime)+' seconds to cast your votes on who to hang. Valid votes are '+str(all), all)
-        killedPlayer = c.poll(all, townvotetime, all, 'town', all)
-        if len(killedPlayer)!=1:
+        killedPlayer,t = c.poll(all, townvotetime, all, 'town', all,i['townUnanimous'],i['townSilentVote'])
+        #if len(killedPlayer)!=1:
+	if t==2:
             msg = 'The vote resulted in a tie between players: '+str(killedPlayer)+', so nobody dies today.'
             c.broadcast(msg, all)
 	    c.log('Townspeople vote tie',0,1,0)
-        else:
+        elif t==1:
+		c.broadcast('The vote was not unanimous',all)
+		c.log('Townspeople vote not unanimous',0,1,0)
+	else:
             c.broadcast('The town voted to hang '+str(killedPlayer[0])+'!',all)
 	    c.log('Townspeople killed '+str(killedPlayer[0]),0,1,0)
             removePlayer(killedPlayer[0],1)
