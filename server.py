@@ -23,10 +23,6 @@ for var in inputVars:
 	except:
 		continue
 	i[key]=value
-
-#pass the necessary input variables into the communication script
-c.setVars(i['readVulnerability'],i['imposterMode'])
-
 logFile=''
 
 #time parameters
@@ -37,68 +33,60 @@ townvotetime=int(i['townVoteTime'])
 towntalktime=int(i['townTalkTime'])
 witchvotetime=int(i['witchVoteTime'])
 deathspeechtime=int(i['deathSpeechTime'])
+
 test=int(i['test'])
+numWolves=int(i['numWolves'])
 start = time.time()
 
 #group people by roles
-all=[]
-wolves=[]
-townspeople=[]
-witch=[]
+all={}
+wolves={}
+townspeople={}
+witch={}
 
 potions=[int(i['kill']),int(i['heal'])]#[kill,heal]
 
 round=1
 
-
 def removePlayer(player,giveSpeech):
-    global all, wolves, witch,wolftalktime
+    global all, wolves, witch
     isTownsperson=1
    
-    newAll=[]
-    for p in all:
+    newAll={}
+    for p in all.keys():
         if player!=p:
-            newAll.append(p)
-    newWolves=[]
-    for p in wolves:
+            newAll[p]=all[p]
+    newWolves={}
+    for p in wolves.keys():
         if player!=p:
-            newWolves.append(p)
+            newWolves[p]=wolves[p]
         else:
             #c.broadcast(player+' was a wolf!',all)
 	    c.log(p+'-wolf killed.',1,0,1)
             isTownsperson=0
-    if player in witch:
+    if player in witch.keys():
         #c.broadcast(player+' was the witch!',all)
 	c.log(player+'-witch killed',1,0,1)
-        witch=[]
+        witch={}
         isTownsperson=0
     if isTownsperson:
 	pass
         #c.broadcast(player+' was a townsperson.',all)
 	c.log(player+'-townsperson killed',1,0,1)
     if giveSpeech:
-        c.broadcast('These are '+player+'s last words.', c.complement(player,all))
-	p='sto'+player[0]
-	try:
-		int(player[1])
-		p+=player[1]
-	except:
-		pass
-	c.send("Share your parting words.", p)
+        c.broadcast('These are '+player+'s last words.', all)
+	c.send("Share your parting words.", all[player][1])
 	c.setLogChat(1)
-        c.spawnDeathSpeech(player,all,deathspeechtime)
+        c.spawnDeathSpeech(player,deathspeechtime)
 	c.setLogChat(0)
     else:
 	c.broadcast(player+' was eliminated by the moderator.',all)
+
+    c.send('close',all[player][1])
     all=newAll
     wolves=newWolves
     if len(wolves)==1:
 	wolftalktime=0
-    try:
-	out='sto'+str(int(player[0]+player[1]))
-    except:
-	out='sto'+player[0]
-    c.send('close',out)
 
 def quitGame(Signal, frame):
     global all
@@ -109,43 +97,44 @@ def quitGame(Signal, frame):
     if not test:
     	os.system('echo "'+msg+'" | wall')
     #os.system('killall -s 9 cat')
-    os.system('killall -s 9 sh 2> /dev/null')
+    #os.system('killall -s 9 sh 2> /dev/null')
     os.kill(os.getpid(),signal.SIGKILL)
 signal.signal(signal.SIGINT, quitGame)
 
-def assign(all):
+def assign():
+    global all, wolves, witch
     #balance the game accordingly
-    numPlayers = len(all)
-    try:
-        config = open('config/'+str(numPlayers)+'.txt','r').read().strip('\n').split(',')
-    except:
-        print "Cant play with "+str(numPlayers)+" people.  Quitting."
-        return 1
+    numPlayers = len(all.keys())
+
+    config=['W']
+    for i in range(numWolves):
+	config.append('w')
+    for i in range(numPlayers-numWolves-1):
+	config.append('t')
+
     #randomize roles
     for i in range(numPlayers):
         swap = random.randint(0,numPlayers-1)
         temp = config[i]
         config[i]=config[swap]
         config[swap]=temp
+
     #assign roles and inform players
-    for i in range(len(all)):
-        player = all[i]
-	try:
-	    pipe='sto'+str(int(player[0]+player[1]))
-	except Exception, p:
-  	    pipe = 'sto'+player[0]
+    for i in range(len(all.keys())):
+	player=all.keys()[i]
+
         if config[i]=='w':
-            wolves.append(player)
+            wolves[player]=all[player]
             role='wolf'
         elif config[i]=='W':
-            witch.append(player)
-            townspeople.append(player)
+            witch[player]=all[player]
+            townspeople[player]=all[player]
             role='witch'
         else:
-            townspeople.append(player)
+            townspeople[player]=all[player]
             role='townsperson'
 	try:
-        	c.send('~~~~~ YOU ARE A '+role+' ~~~~~', pipe)
+        	c.send('~~~~~ YOU ARE A '+role+' ~~~~~', all[player][1])
 	except Exception, p:
 		c.log('ASSIGNERROR:'+str(p),1,0,1)
 
@@ -158,23 +147,26 @@ def standardTurn():
     try:
         c.broadcast("Night falls and the town sleeps.  Everyone close your eyes",all)
 	c.log('Night',0,1,0)
-        time.sleep(1)
+        #time.sleep(1)
 
 
         #**************WEREWOLVES************************
         c.broadcast("Werewolves, open your eyes.", c.complement(wolves,all))
-	c.broadcast('Werewolves, '+str(wolves)+', you must choose a victim.  You have '+str(wolftalktime)+' seconds to discuss.' ,wolves)
+	c.broadcast('Werewolves, '+str(wolves.keys())+', you must choose a victim.  You have '+str(wolftalktime)+' seconds to discuss.' ,wolves)
 	c.log('Werewolves debate',0,1,0)
         c.allow(wolves)
         c.sleep(wolftalktime)
 
 	c.broadcast("Werewolves, vote.", c.complement(wolves,all))
-	c.broadcast('Werewolves, you must vote on a victim to eat.  You have '+str(wolfvotetime)+' to vote.  Valid votes are '+str(all),wolves)
+	
+		
+
+	c.broadcast('Werewolves, you must vote on a victim to eat.  You have '+str(wolfvotetime)+' seconds to vote.  Valid votes are '+str(sorted(all.keys())),wolves)
 	c.log('Werewolves vote',0,1,0)
-        wolfvote,t=c.poll(wolves,wolfvotetime, all, 'wolf', all, i['wolfUnanimous'],i['wolfSilentVote'])
+        wolfvote,t=c.poll(wolves,wolfvotetime, all.keys(), 'wolf', all, i['wolfUnanimous'],i['wolfSilentVote'])
 	c.broadcast('Werewolves, go to sleep.',c.complement(wolves,all))
 	if t==1:
-	    c.broadcast('Vote not Unanimous, nobody eaten.', wolves)
+	    c.broadcast('Vote not unanimous, nobody eaten.', wolves)
 	    c.log('Werewolves not unanimous',0,1,0)
         #elif len(wolfvote)!=1:
 	elif t==2:
@@ -194,10 +186,8 @@ def standardTurn():
         if len(witch)>0 and (potions[0] or potions[1]):
             c.broadcast('Witch, open your eyes.',c.complement(witch,all))
 	    c.log('Witch vote',0,1,0)
-	    try:
-		witchPlayer='sto'+str(int(witch[0][0]+witch[0][1]))
-	    except:
-		witchPlayer='sto'+witch[0][0]
+	    witchPlayer=witch[witch.keys()[0]]
+
             if wolfkill:
                 validKills=[]
                 for p in all:
@@ -209,38 +199,31 @@ def standardTurn():
                     witchmoves=validKills+['Pass']
                 else:
                     witchmoves=['Heal','Pass']
-		c.send('Witch, wake up.  The wolves killed '+str(wolfvote)+'.  Valid votes are '+str(witchmoves),witchPlayer)
+		c.send('Witch, wake up.  The wolves killed '+str(wolfvote)+'.  Valid votes are '+str(sorted(witchmoves)),witchPlayer[1])
             else:
                 if potions[0]:
-                    witchmoves=all+['Pass']
+                    witchmoves=all.keys()+['Pass']
                 else:
                     witchmoves=['Pass']
-		c.send('Witch, the wolves didnt feed tonight.  Valid votes are '+str(witchmoves),witchPlayer)
+		c.send('Witch, the wolves didnt feed tonight.  Valid votes are '+str(sorted(witchmoves)),witchPlayer[1])
 
             #witch voting
             witchVote,t=c.poll(witch,witchvotetime,witchmoves,'witch',all,0,0)
-            nonwitch=[]
-            for p in all:
-                if p!=witch[0]:
-                    nonwitch.append(p)
-            c.clear(nonwitch)#clear queued chat messages
 
-            #print 'wv:'+str(witchVote)
             if witchVote==[] or witchVote[0]=='Pass' or t:
 		c.log('Witch passed',1,1,1)
 		c.broadcast('Witch, close your eyes',all)
             elif witchVote[0]=='Heal':
-                c.broadcast('The witch used a health potion!',all)
-		c.send('The witch healed you!',wolfvote[0])
-		c.log('Witch healed '+wolfvote[0],0,0,1)
+		c.send('The Witch healed you!',all[wolfvote[0]][1])
+		c.log('The Witch healed '+wolfvote[0]+'!',0,0,1)
                 wolfkill=0
                 potions[1]-=1
+		c.broadcast('The witch used a health potion! '+str(potions[1])+' heal(s) remaining.',all)
             else:
                 witchkill=1
                 potions[0]-=1
 	        c.broadcast('Witch, close your eyes',all)
         #**************END WITCH************************
-
 
         #**************START TOWN***********************
         if wolfkill:
@@ -250,7 +233,7 @@ def standardTurn():
             if len(wolves)==0 or len(all)==len(wolves):
                 return 1
         if witchkill:
-            c.broadcast('The witch used the poison on '+witchVote[0]+'!',all)
+            c.broadcast('The Witch poisoned '+witchVote[0]+'!  '+ str(potions[0])+' poison(s) remaining.',all)
 	    c.log('Witch poisoned '+witchVote[0],0,1,0)
             removePlayer(witchVote[0],1)
             if len(all)-len(wolves)==0 or len(wolves)==0:
@@ -261,14 +244,14 @@ def standardTurn():
         c.broadcast('It is day.  Everyone, open your eyes.  You will have '+str(towntalktime)+' seconds to discuss who the werewolves are.',all)
 	c.log('Day-townspeople debate',0,1,0)
         c.sleep(towntalktime)
-        c.allow([])
+        c.allow({})
 
 	c.log('Townspeople vote',0,1,0)
-	c.broadcast('Townspeople, you have '+str(townvotetime)+' seconds to cast your votes on who to hang. Valid votes are '+str(all), all)
-        killedPlayer,t = c.poll(all, townvotetime, all, 'town', all,i['townUnanimous'],i['townSilentVote'])
+	c.broadcast('Townspeople, you have '+str(townvotetime)+' seconds to cast your votes on who to hang. Valid votes are '+str(sorted(all.keys())), all)
+        killedPlayer,t = c.poll(all, townvotetime, all.keys(), 'town', all,i['townUnanimous'],i['townSilentVote'])
         #if len(killedPlayer)!=1:
 	if t==2:
-            msg = 'The vote resulted in a tie between players: '+str(killedPlayer)+', so nobody dies today.'
+            msg = 'The vote resulted in a tie between players '+str(killedPlayer)+', so nobody dies today.'
             c.broadcast(msg, all)
 	    c.log('Townspeople vote tie',0,1,0)
         elif t==1:
@@ -281,29 +264,27 @@ def standardTurn():
 	c.setLogChat(0)
         #******************END TOWN*******************
         return 1
-    except Exception, p:
-        c.log('STANDARDTURNERROR:'+str(p),1,0,1)
+    except Exception, error:
+        c.log('STANDARDTURNERROR:'+str(error),1,0,1)
         return 0
 
 def listenerThread():
-    global round
+    global round,all
     while 1:
         i=raw_input().strip('\n')
 	if i=='':
 	    pass
         elif i=='help':
-	    os.system('cat config/moderatorHelp.txt')
+	    os.system('cat moderatorHelp.txt')
         elif i=='status':
 	    print 'round '+str(round)
-            print 'all: '+str(all)
-            print 'wolves: '+str(wolves)
+            print 'all: '+str(all.keys())
+            print 'wolves: '+str(wolves.keys())
 
-            wStatus=', '
-            if potions[0]:
-                wStatus+='poison '
-            if potions[1]:
-                wStatus+='health '
-            print 'witch: '+str(witch)+wStatus
+            wStatus=': '
+            wStatus+=str(potions[0])+' poisons, '
+            wStatus+=str(potions[1])+' heals '
+            print 'witch: '+str(witch.keys())+wStatus
         elif i[0:4]=='kill':
             player=i.split(' ')[1]
             c.broadcast('Moderator removed '+player,all)
@@ -311,7 +292,7 @@ def listenerThread():
             removePlayer(player,0)
 	elif i=='skip':
 	    c.skip()
-	    c.broadcast('Moderator skipped current section.',all)
+	    #c.broadcast('Moderator skipped current section.',all)
 	    c.log('Moderator skipped current section.',0,1,0)
 	else:
 	    c.broadcast('moderator-'+i,all)
@@ -320,10 +301,8 @@ def listenerThread():
 def main():
     global all,round
 
-
-
     if test:
-	name='log/dummy.log'
+	publicLogName='log/dummy.log'
 	moderatorLogName='log/dummy-m.log'
 	next=9999
     else:
@@ -335,10 +314,12 @@ def main():
    	nextround.close()
     	msg='Game '+str(next)+' starts in '+str(timeTillStart)+' seconds.'
 	os.system('echo "'+msg+'" | wall')
-    	name='log/'+str(next)+'.log'
+    	publicLogName='log/'+str(next)+'.log'
         moderatorLogName='log/'+str(next)+'m.log'
 
-    c.setLogFileNames(name,moderatorLogName)
+    #pass the necessary input variables into the communication script
+    c.setVars(i['readVulnerability'],i['imposterMode'],publicLogName,moderatorLogName)
+
     if i['moderatorLogMode']==1:
 	os.system('touch '+moderatorLogName)
 	os.system('chmod 700 '+moderatorLogName)
@@ -351,37 +332,35 @@ def main():
     t.start()
     c.log('\nmoderator listener thread started',1,0,1)
 
-    all=c.handleConnections(timeTillStart)
+    all=c.handleConnections(timeTillStart,int(i['randomizeNames']))
 
     #ot=Thread(target=c.obscure,args=[])
     #ot.start()
     #c.log('obscurity thread started',1,0,1)
 
     #assign each connection a role
-    assign(all)
+    assign()
     c.log('roles assigned',1,0,1)
 
-    u=Thread(target=c.groupChat,args=[all,0])
+    u=Thread(target=c.groupChat,args=[all,])
     u.start()
     c.log('group chat thread started',1,0,1)
 
     c.log('\nBegin.',1,1,1)
     c.broadcast('There are '+str(len(wolves))+' wolves, and '+str(len(all)-len(wolves))+' townspeople.',all)
-
-    c.allow([])
-
+    c.allow({})
 
     #the main part of the game
     while len(wolves)!=0 and len(wolves)<len(all):
 	    c.log('\n\n',1,1,1)
 	    c.broadcast('*'*50,all)
-	    c.broadcast('*'*21+'ROUND '+str(round)+'*'*21,all)
-	    c.broadcast('*'*15+str(len(all))+' players remain.'+'*'*15,all)
+	    c.broadcast('*'*21+'ROUND '+str(round)+'*'*22,all)
+	    c.broadcast('*'*15+str(len(all))+' players remain.'+'*'*18,all)
 	    c.broadcast('*'*50,all)
 	    c.log('Round '+str(round),0,1,0)
-	    c.log('Townspeople: '+str(all),1,1,1)
-	    c.log('Werewolves: '+str(wolves),1,0,1)
-	    c.log('Witch: '+str(witch),1,0,1)
+	    c.log('Townspeople: '+str(all.keys()),1,1,1)
+	    c.log('Werewolves: '+str(wolves.keys()),1,0,1)
+	    c.log('Witch: '+str(witch.keys()),1,0,1)
 	    round+=1
             standardTurn()
 
@@ -393,16 +372,16 @@ def main():
     elif len(wolves)==len(all):
         c.log('\nWerewolves win!',0,1,0)
         c.broadcast('Werewolves win!',all)
-    c.broadcast('close',all)
+    c.broadcast('win',all)
 
     c.log('End',1,1,1)
-    os.system('chmod 744 log/'+str(next)+'m.log')
+    if not test: os.system('chmod 744 log/'+str(next)+'m.log')
     #logFile.close()
     msg='Game '+str(next)+' is over.'
     if not test:
         os.system('echo "'+msg+'" | wall')
-    os.system('killall -s 9 cat')
-    os.system('killall -s 9 sh')
+    os.system('killall -s 9 cat 2> /dev/null')
+    os.system('killall -s 9 sh 2> /dev/null')
     os.kill(os.getpid(),signal.SIGKILL)
 
 main()

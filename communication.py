@@ -10,50 +10,48 @@ import threading
 import random
 from threading import Thread
 
-all=[]
+all={}
 
 pipeRoot='/home/moderator/pipes/'
-
 logName=''
 mLogName=''
-
-conns=[]
-allowed=[]
-
+conns={}
+allowed={}
 logChat=0
-current=0
+currentTime=0
 
 readVulnerability=1
 imposterMode=1
 isSilent=1
-def setVars(passedReadVulnerability, passedImposterMode):
+def setVars(passedReadVulnerability, passedImposterMode, publicLogName, moderatorLogName):
     #descriptions of these variables can be seen in the mafia.config file
-    global readVulnerability, imposterMode
+    global readVulnerability, imposterMode, logName,mLogName
     readVulnerability=int(passedReadVulnerability)
     imposterMode=int(passedImposterMode)
+    logName=publicLogName
+    mLogName=moderatorLogName
 
 
+#returns all elements in y that are not in x
 def complement(x,y):
-    z=[]
-    for val in y:
-	if val not in x:
-	    z.append(val)
+    z={}
+    for element in y.keys():
+	if element not in x.keys(): z[element]=y[element]
     return z
 	
-
+#resets all variables 
 def skip():
-    global current,voteAllowDict, deathspeech, deadGuy, voters, targets
-    #voteAllowDict={'w':0,'W':0,'t':0}
-    current=0
+    global currentTime,deathspeech, deadGuy, voters, targets
+    currentTime=0
     deathspeech=0
     deadGuy=""
-    voters=[]
-    targets=[]
+    voters={}
+    targets={}
 
 def sleep(duration):
-    global current
-    current=time.time()
-    while time.time()<current+duration:
+    global currentTime
+    currentTime=time.time()
+    while time.time()<currentTime+duration:
         time.sleep(1)
 
 def setLogChat(n):
@@ -66,77 +64,69 @@ def obscure():
 	#os.system('ls '+pipeRoot+'* > /dev/null 2> /dev/null')
 	#time.sleep(.1)
 
-def allow(pipes):
+def allow(players):
     global allowed
-    allowed=pipes
+    allowed=players
 
-notStop=1
-def handleConnections(timeTillStart):
-    global notStop, all
-    possibleConnections=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
-    for c in possibleConnections:
-        t=Thread(target=connect,args=[str(c)+'tos'])
-	#allowed.append(str(c)+'tos')
+isHandlingConnections=1
+def handleConnections(timeTillStart, randomize):
+    global isHandlingConnections, all
+    #possibleConnections=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+
+    if randomize:
+            f=open('names.txt','r').read().split('\n')[0:-1]
+            for i in range(len(f)):
+                    r=random.randint(0,len(f)-1)
+                    temp=f[i]
+                    f[i]=f[r]
+                    f[r]=temp
+
+    for conn in range(1,16):#possibleConnections:
+	if randomize:
+		name=f[conn]
+	else:
+		name='group'+str(conn)
+		
+        t=Thread(target=connect,args=[str(conn),str(name)])
         t.start()
     sleep(int(timeTillStart))
-    notStop=0
+    isHandlingConnections=0
     all=conns
     return conns
 
-def connect(inputPipe):
-    global notStop
-    input=''
-    while input!='connect' and notStop:
-        try:
-            input=recv(inputPipe)[2]
-        except:
-            pass
-        if input=='connect':
-            log(str(inputPipe)+' connected',1,0,1)
-	    try:
-		out='sto'+str(int(inputPipe[0]+inputPipe[1]))
-	    except:
-		out='sto'+inputPipe[0]
-            send('You are connected.  Please wait for the game to start.',out)
-            conns.append(inputPipe)
+def connect(num,name):
+    global isHandlingConnections
+
+    inPipe=num+'tos'
+    outPipe='sto'+num
+
+    connInput=''
+    while connInput!='connect' and isHandlingConnections:
+        try: connInput=recv(inPipe)[2]
+	except Exception, p: pass
+
+        if connInput=='connect':
+            log(name+' connected',1,0,1)
+            send('Hello, '+name+'.  You are connected.  Please wait for the game to start.',outPipe)
+	    conns[name]=[inPipe,outPipe]
 
 
-def broadcast(msg, pipes):
+def broadcast(msg, players):
     global logChat
-    try:
-        log(msg,1,logChat,1)
-    except Exception, p:
-	log('broadcast error:'+str(p),1,0,1)
+    log(msg,1,logChat,1)
 
-    for pipe in pipes:
-	try:
-	    pipe='sto'+str(int(pipe[0]+pipe[1]))
-	except:
-        	pipe = 'sto'+pipe[0]
-        try:
-            send(msg,pipe)
-        except Exception, p:
-            log('broadcast error:'+str(p),1,0,1)
+    for player in players.keys():
+	try: send(msg,players[player][1])
+        except Exception, p: log('broadcast error:'+str(p),1,0,1)
             
 
 def send(msg, pipe):
-    msg=msg.replace("'",'').replace('"','')
+    msg=msg.replace("'",'').replace('"','').replace('\n','')
 
     try:
-	try:
-	    moniker=str(int(pipe[0]+pipe[1]))
-	except:
-       	    moniker=pipe[0]
-        try:
-            msg=msg.strip('\n')
-        except:
-            pass
-        
-        #os.popen('echo "" > '+pipeRoot+pipe+'D/'+pipe).close()
-        msg='(echo :'+moniker+':'+msg+' > '+pipeRoot+pipe+'D/'+pipe+') 2> /dev/null'
+	out=pipe.split('to')[0]
+        msg='(echo :'+out+':'+msg+' > '+pipeRoot+pipe+'D/'+pipe+') 2> /dev/null &'
         o=os.popen(msg)
-        o.read()
-        o.close()
     except Exception, p:
         log('send error:'+str(p),1,0,1)
 
@@ -156,18 +146,16 @@ def recv(pipe):
             for i in range(len(output)):
                 if len(output[i])>0:
                     output[i]=output[i].split(':')
-		    try:
-            		moniker=str(int(pipe[0]+pipe[1]))
-        	    except:
-	            	moniker=pipe[0]
-
-		    if (output[i][1]=='s' or output[i][1]==moniker or imposterMode==1):
+		    out=pipe.split('to')[0]
+		    if (output[i][1]=='s' or output[i][1]==out or imposterMode==1):
                     	return output[i] 
+
         except Exception, p:
             #log('receive error:'+str(p),0,0,0)
 	    pass
 
 
+#print, publicLog, modLog
 def log(msg, printBool,publicLogBool,moderatorLogBool):
     global logName,mLogName
 
@@ -182,11 +170,6 @@ def log(msg, printBool,publicLogBool,moderatorLogBool):
     if printBool:
         print msg
 
-def setLogFileNames(passedLogName,passedMLogName):
-    global logName, mLogName
-    logName=passedLogName
-    mLogName=passedMLogName
-
 def clear(pipes):
     for p in pipes:
         for i in range(10):
@@ -195,52 +178,51 @@ def clear(pipes):
 
 deathspeech=0
 deadGuy=""
-def multiRecv(pipe, pipes,endTime):
+def multiRecv(player, players):
     global allowed, voters, targets, deathspeech, deadGuy, all
-    start = time.time()
+
     while 1:
-	verified=1
-        msg=recv(pipe)
+        msg=recv(all[player][0])
+	if msg==None: continue
 
 	#if someones giving a deathspeech
-	if verified and deathspeech and pipe==deadGuy:
-		broadcast(msg[1]+'-'+msg[2], modPipes(pipe,all))
+	if deathspeech and player==deadGuy:
+		broadcast(msg[1]+'-'+msg[2], modPlayers(player,all))
 
 	#if were voting
-	elif verified and msg!=None and votetime and pipe in voters:
-		vote(pipe,msg[2])
+	elif votetime and player in voters.keys():
+		vote(player,msg[2])
 	
 	#if its open chat
-        elif verified and msg!=None and pipe in allowed:
-            broadcast(msg[1]+'-'+msg[2], modPipes(pipe,allowed))
+        elif player in allowed:
+            broadcast(msg[1]+'-'+msg[2], modPlayers(player,allowed))
 
 	#otherwise prevent spam
 	else:
 	    time.sleep(1)
 
-def groupChat(pipes, endTime):
-    for pipe in pipes:
-        newPipes=modPipes(pipe, pipes)
-        t = Thread(target=multiRecv,args=[pipe, newPipes, endTime])
+def groupChat(players):
+    for player in players.keys():
+        newPlayers=modPlayers(player, players)
+        t = Thread(target=multiRecv,args=[player, newPlayers])
         t.start()
         
 #remove one pipe from pipes
-def modPipes(pipe, pipes):
-    newPipes=[]
-    for p in pipes:
-        if p!=pipe:
-            newPipes.append(p)
-    return newPipes
+def modPlayers(player, players):
+    newPlayers={}
+    for p in players.keys():
+        if p!=player:
+            newPlayers[p]=players[p]
+    return newPlayers
 
-#this is a dictionary of booleans that forces only one group to vote at a time.
+#voteAllowDict is a dictionary of booleans that forces only one group to vote at a time.
 votetime=0
 voteAllowDict={'w':0,'W':0,'t':0}
 votes={}
 votesReceived=0
-voters=[]
+voters={}
 targets=[]
 character=""
-
 def poll(passedVoters, duration, passedValidTargets, passedCharacter, everyone, isUnanimous, passedIsSilent):
     global votes,voteAllowDict,allowed,votesReceived,logChat,votetime,voters,targets, character, isSilent
 	
@@ -265,32 +247,28 @@ def poll(passedVoters, duration, passedValidTargets, passedCharacter, everyone, 
             results.append(v)
 
     #this var signifies the class of result
-    #0 - result=victim; 1 - vote not unan; 2 - vote is tie
+    #0 - results[0]=victim; 1 - vote not unan; 2 - vote is tie
     resultType=0
 	
     if int(isUnanimous) and mode!=len(passedVoters): #the voteCount of the winner is not equal the number of voters
 	resultType=1
-    elif len(results)>1 or len(results)==0:
+    elif len(results)>1 or len(results)==0:#tie or nonvote
 	resultType=2
 
     validTargets=[]
     votetime=0
-    voters=[]    
+    voters={}   
 
     return results,resultType
 
 def vote(voter, target):
-        global votes,votesReceived,voters,targets,character,isSilent
-
-	respondToVoter='sto'+voter.split('to')[0]
+        global votes,votesReceived,voters,character,isSilent
 
 	if target in targets:
-		try:
-			votes[target]+=1
-		except:
-			votes[target]=1
+		try: votes[target]+=1
+		except: votes[target]=1
 
-		#message[0] is sent to who[0]; 1 to 1; etc.
+		#message[0] is sent to who[0]; message[1] sent to who[1]; etc.
 		messages=[]
 		who=[]
 
@@ -299,36 +277,31 @@ def vote(voter, target):
 		if character=="witch":
 			messages.append("Witch voted")
 			who.append(all)
-			#broadcast("Witch voted",all)
 		elif character=="wolf":
-			if isSilent:
-				messages.append(voter+' voted.')
-			else:
-				messages.append(voter+' voted for '+target)
+			if isSilent: messages.append(voter+' voted.')
+			else: messages.append(voter+' voted for '+target)
 			who.append(voters)
 
 			messages.append("Wolf vote received.")
 			who.append(complement(voters,all))
 		else:#townsperson vote
-			if isSilent:
-				messages.append(voter+' voted.')
-			else:
-				messages.append(voter+' voted for '+target)
+			if isSilent: messages.append(voter+' voted.')
+			else: messages.append(voter+' voted for '+target)
 			who.append(all)
 
 		for i in range(len(messages)):
 			broadcast(messages[i],who[i])
 
 		votesReceived+=1
-		if votesReceived==len(voters):
-			skip()
-	else:
-		send('invalid vote: '+target,respondToVoter)
+		if votesReceived==len(voters): skip()
 
-def spawnDeathSpeech(pipe,all,endtime):
+	else:
+		send('invalid vote: '+target, voters[voter][1])
+
+def spawnDeathSpeech(player,endtime):
     global deathspeech, deadGuy
     deathspeech=1
-    deadGuy=pipe
+    deadGuy=player
 
     sleep(endtime)
 
