@@ -71,34 +71,30 @@ def allow(players):
 isHandlingConnections=1
 def handleConnections(timeTillStart, randomize):
     global isHandlingConnections, all
-    #possibleConnections=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
 
-    if randomize:
-            f=open('names.txt','r').read().split('\n')[0:-1]
-            for i in range(len(f)):
-                    r=random.randint(0,len(f)-1)
-                    temp=f[i]
-                    f[i]=f[r]
-                    f[r]=temp
+    f=open('names.txt','r').read().split('\n')[0:-1]
+    if randomize: random.shuffle(f)
 
-    for conn in range(1,16):#possibleConnections:
-	if randomize:
-		name=f[conn]
-	else:
-		name='group'+str(conn)
+    connectionThreads=[]
+    for conn in range(1,len(f)):
+	if randomize: name=f[conn]
+	else: name='group%s'%(str(conn))
 		
         t=Thread(target=connect,args=[str(conn),str(name)])
         t.start()
+	connectionThreads.append(t)
+
     sleep(int(timeTillStart))
+    for t in connectionThreads: t._Thread__stop()
     isHandlingConnections=0
     all=conns
     return conns
 
 def connect(num,name):
-    global isHandlingConnections
+    #global isHandlingConnections
 
-    inPipe=num+'tos'
-    outPipe='sto'+num
+    inPipe='%stos'%num
+    outPipe='sto%s'%num
 
     connInput=''
     while connInput!='connect' and isHandlingConnections:
@@ -106,9 +102,10 @@ def connect(num,name):
 	except Exception, p: pass
 
         if connInput=='connect':
-            log(name+' connected',1,0,1)
-            send('Hello, '+name+'.  You are connected.  Please wait for the game to start.',outPipe)
+            log('%s connected'%name,1,0,1)
+            send('Hello, %s.  You are connected.  Please wait for the game to start.'%name,outPipe)
 	    conns[name]=[inPipe,outPipe]
+	else: time.sleep(.1)
 
 
 def broadcast(msg, players):
@@ -116,42 +113,44 @@ def broadcast(msg, players):
     log(msg,1,logChat,1)
 
     for player in players.keys():
-	try: send(msg,players[player][1])
-        except Exception, p: log('broadcast error:'+str(p),1,0,1)
+	try:
+	    send(msg,players[player][1])
+        except Exception, p: pass#log('broadcast error:%s'%p,1,0,1)
             
 
 def send(msg, pipe):
-    msg=msg.replace("'",'').replace('"','').replace('\n','')
+    msg=msg.replace("'",'').replace('"','').replace('\n','').replace('(','[').replace(')',']').replace('>','').replace('<','').replace(':','')
 
     try:
-	out=pipe.split('to')[0]
-        msg='(echo :'+out+':'+msg+' > '+pipeRoot+pipe+'D/'+pipe+') 2> /dev/null &'
-        o=os.popen(msg)
+	sender=pipe.split('to')[0]
+	#f=open(pipeRoot+pipe+'D/'+pipe,'w')
+	#f.write(':'+sender+':'+msg)
+	#f.close()
+	if len(msg)!=0:	
+	    msg='(echo :%s:%s > %s%sD/%s) 2> /dev/null &'%(sender,msg,pipeRoot,pipe,pipe)
+            o=os.popen(msg)
     except Exception, p:
-        log('send error:'+str(p),1,0,1)
+        log('send error:%s'%p,1,0,1)
 
 def recv(pipe):
-	global readVulnerability, imposterMode
+   	global readVulnerability, imposterMode
         try:
 	    if readVulnerability==0:
-	    	f=open(pipeRoot+str(pipe)+'D/'+str(pipe),'r')
-	    	output=f.read().split('\n')
-	    	f.close()
+		f=open('%s%sD/%s'%(pipeRoot,pipe,pipe),'r')
 	    else:
-		msg='(cat '+pipeRoot+str(pipe)+'D/'+str(pipe)+') 2> /dev/null'
-            	f=os.popen(msg)
-            	output=f.read().split('\n')
-            	f.close()		
-
+		msg='(cat %s%sD/%s)2>/dev/null'%(pipeRoot,pipe,pipe)
+           	f=os.popen(msg)
+            output=f.read().split('\n')
+            f.close()		
+	  
             for i in range(len(output)):
                 if len(output[i])>0:
                     output[i]=output[i].split(':')
 		    out=pipe.split('to')[0]
 		    if (output[i][1]=='s' or output[i][1]==out or imposterMode==1):
                     	return output[i] 
-
         except Exception, p:
-            #log('receive error:'+str(p),0,0,0)
+            log('receive error:%s'%p,0,0,0)
 	    pass
 
 
@@ -159,16 +158,18 @@ def recv(pipe):
 def log(msg, printBool,publicLogBool,moderatorLogBool):
     global logName,mLogName
 
+    if printBool:
+	print msg
+
+    msg='(%s) - %s\n'%(str(int(time.time())),msg)
     if publicLogBool:
 	f=open(logName,'a')
-    	f.write('('+str(int(time.time()))+')--'+msg+'\n')
+    	f.write(msg)
 	f.close()
     if moderatorLogBool:
 	g=open(mLogName,'a')
-	g.write('('+str(int(time.time()))+')--'+msg+'\n')
+	g.write(msg)
 	g.close()
-    if printBool:
-        print msg
 
 def clear(pipes):
     for p in pipes:
@@ -187,15 +188,15 @@ def multiRecv(player, players):
 
 	#if someones giving a deathspeech
 	if deathspeech and player==deadGuy:
-		broadcast(msg[1]+'-'+msg[2], modPlayers(player,all))
+	    broadcast('%s-%s'%(player,msg[2]),modPlayers(player,all))
 
 	#if were voting
 	elif votetime and player in voters.keys():
-		vote(player,msg[2])
+	    vote(player,msg[2])
 	
-	#if its open chat
+	#if its group chat
         elif player in allowed:
-            broadcast(msg[1]+'-'+msg[2], modPlayers(player,allowed))
+	    broadcast('%s-%s'%(player,msg[2]), modPlayers(player,allowed))
 
 	#otherwise prevent spam
 	else:
@@ -262,41 +263,40 @@ def poll(passedVoters, duration, passedValidTargets, passedCharacter, everyone, 
     return results,resultType
 
 def vote(voter, target):
-        global votes,votesReceived,voters,character,isSilent
+    global votes,votesReceived,voters,character,isSilent
 
-	if target in targets:
-		try: votes[target]+=1
-		except: votes[target]=1
+    if target in targets:
+	try: votes[target]+=1
+	except: votes[target]=1
+	#message[0] is sent to who[0]; message[1] sent to who[1]; etc.
+	messages=[]
+	who=[]
 
-		#message[0] is sent to who[0]; message[1] sent to who[1]; etc.
-		messages=[]
-		who=[]
+	log(voter+" voted for "+target,1,0,1)
 
-		log(voter+" voted for "+target,1,0,1)
+	if character=="witch":
+	    messages.append("Witch voted")
+	    who.append(all)
+	elif character=="wolf":
+	    if isSilent: messages.append('%s voted.'%voter)
+	    else: messages.append('%s voted for %s'%(voter,target))
+	    who.append(voters)
 
-		if character=="witch":
-			messages.append("Witch voted")
-			who.append(all)
-		elif character=="wolf":
-			if isSilent: messages.append(voter+' voted.')
-			else: messages.append(voter+' voted for '+target)
-			who.append(voters)
+   	    messages.append("Wolf vote received.")
+	    who.append(complement(voters,all))
+	else:#townsperson vote
+	    if isSilent: messages.append('%s voted.'%voter)
+	    else: messages.append('%s voted for %s'%(voter,target))
+	    who.append(all)
 
-			messages.append("Wolf vote received.")
-			who.append(complement(voters,all))
-		else:#townsperson vote
-			if isSilent: messages.append(voter+' voted.')
-			else: messages.append(voter+' voted for '+target)
-			who.append(all)
+	for i in range(len(messages)):
+	    broadcast(messages[i],who[i])
 
-		for i in range(len(messages)):
-			broadcast(messages[i],who[i])
+	votesReceived+=1
+	if votesReceived==len(voters): skip()
 
-		votesReceived+=1
-		if votesReceived==len(voters): skip()
-
-	else:
-		send('invalid vote: '+target, voters[voter][1])
+    else:
+	send('invalid vote: %s'%target, voters[voter][1])
 
 def spawnDeathSpeech(player,endtime):
     global deathspeech, deadGuy
