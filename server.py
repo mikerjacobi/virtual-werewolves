@@ -12,6 +12,7 @@ import time
 import random
 import signal
 import communication as c
+import threading
 from threading import Thread
 
 i={}
@@ -36,6 +37,7 @@ witchvotetime=int(i['witchVoteTime'])
 deathspeechtime=int(i['deathSpeechTime'])
 
 test=int(i['test'])
+giveDeathSpeech=int(i['deathSpeech'])
 numWolves=int(i['numWolves'])
 
 #group people by roles
@@ -48,55 +50,48 @@ potions=[int(i['kill']),int(i['heal'])]#[kill,heal]
 
 round=1
 
-def removePlayer(player,giveSpeech):
-    global all, wolves, witch
-    isTownsperson=1
+def removePlayer(player):
+ 	global all, wolves, witch
+	isTownsperson=1
    
-    newAll={}
-    for p in all.keys():
-        if player!=p:
-            newAll[p]=all[p]
-    newWolves={}
-    for p in wolves.keys():
-        if player!=p:
-            newWolves[p]=wolves[p]
-        else:
-            #c.broadcast('%s was a wolf!'%player,all)
-	    c.log('%s-wolf killed.'%p,1,0,1)
-            isTownsperson=0
-    if player in witch.keys():
-        #c.broadcast(player+' was the witch!',all)
-	c.log('%s-witch killed'%player,1,0,1)
-        witch={}
-        isTownsperson=0
-    if isTownsperson:
-	pass
-        #c.broadcast(player+' was a townsperson.',all)
-	c.log('%s-townsperson killed'%player,1,0,1)
-    if giveSpeech:
-        c.broadcast('These are %ss last words.'%player, all)
-	c.send("Share your parting words.", all[player][1])
+	newAll={}
+	for p in all.keys():
+		if player!=p: newAll[p]=all[p]
+	newWolves={}
+	for p in wolves.keys():
+		if player!=p: newWolves[p]=wolves[p]
+		c.log('%s-wolf killed.'%p,1,0,1)
+		isTownsperson=0
+	if player in witch.keys():
+		c.log('%s-witch killed'%player,1,0,1)
+		witch={}
+		isTownsperson=0
+	if isTownsperson:
+		c.log('%s-townsperson killed'%player,1,0,1)
 	c.setLogChat(1)
-        c.spawnDeathSpeech(player,deathspeechtime)
+	if giveDeathSpeech:
+		c.broadcast('These are %ss last words.'%player, all)
+		c.send("Share your parting words.", all[player][1])
+		c.spawnDeathSpeech(player,deathspeechtime)
 	c.setLogChat(0)
-    else:
-	c.broadcast('%s was eliminated by the moderator.'%player,all)
 
-    c.send('close',all[player][1])
-    all=newAll
-    wolves=newWolves
-    if len(wolves)==1:
-	wolftalktime=0
+	c.send('close',all[player][1])
+	all=newAll
+	wolves=newWolves
+	if len(wolves)<=1: wolftalktime=0
 
+gameNumber=9999
+winner='No winner.'
 def quitGame(Signal, frame):
-    global all
+    global all, winner, gameNumber
     c.broadcast('close',all)
     c.log('\nGAME FORCE QUIT BY MODERATOR',1,1,1)
     os.chmod(moderatorLogName,0744)
-    if not test:
-    	os.system('echo "Game is over." | wall'%msg)
-    #sys.exit()
-    os.kill(os.getpid(),signal.SIGKILL)
+    if not test: os.system('echo "Game %d is over.  %s" | wall'%(gameNumber,winner))
+    for t in threading.enumerate():
+		try: t._Thread__stop()
+		except: pass
+    sys.exit()
 
 signal.signal(signal.SIGINT, quitGame)
 
@@ -148,7 +143,7 @@ def standardTurn():
         #**************WEREWOLVES************************
         c.broadcast("Werewolves, open your eyes.", c.complement(wolves,all))
 
-        c.broadcast('Werewolves, %s, you must choose a victim.  You have %d seconds to discuss.'%(str(wolves.keys()),wolftalktime) ,wolves)
+        c.broadcast('Werewolves, %s, you must choose a victim.  You have %d seconds to discuss.  Possible victims are %s'%(str(wolves.keys()),wolftalktime, str(all.keys())) ,wolves)
 	#c.broadcast('Werewolves, '+str(wolves.keys())+', you must choose a victim.  You have '+str(wolftalktime)+' seconds to discuss.' ,wolves)
 	c.log('Werewolves debate',0,1,0)
         c.allow(wolves)
@@ -228,20 +223,20 @@ def standardTurn():
         if wolfkill:
             c.broadcast('The werewolves ate %s!'%wolfvote[0],all)
 	    c.log('Werewolves killed %s'%wolfvote[0],0,1,0)
-            removePlayer(wolfvote[0],1)
+            removePlayer(wolfvote[0])
             if len(wolves)==0 or len(all)==len(wolves):
                 return 1
         if witchkill:
             c.broadcast('The Witch poisoned %s!  %d poison[s] remaining.'%(witchVote[0],potions[0]),all)
             #c.broadcast('The Witch poisoned '+witchVote[0]+'!  '+ str(potions[0])+' poison[s] remaining.',all)
 	    c.log('Witch poisoned %s'%witchVote[0],0,1,0)
-            removePlayer(witchVote[0],1)
+            removePlayer(witchVote[0])
             if len(all)-len(wolves)==0 or len(wolves)==0:
                 return 1
 
         c.allow(all)
 	c.setLogChat(1)
-        c.broadcast('It is day.  Everyone, open your eyes.  You will have %d seconds to discuss who the werewolves are.'%towntalktime,all)
+        c.broadcast('It is day.  Everyone, %s, open your eyes.  You will have %d seconds to discuss who the werewolves are.'%(str(all.keys()),towntalktime),all)
         #c.broadcast('It is day.  Everyone, open your eyes.  You will have '+str(towntalktime)+' seconds to discuss who the werewolves are.',all)
 	c.log('Day-townspeople debate',0,1,0)
         c.sleep(towntalktime)
@@ -262,7 +257,7 @@ def standardTurn():
 	else:
             c.broadcast('The town voted to hang %s!'%killedPlayer[0],all)
 	    c.log('Townspeople killed %s'%str(killedPlayer[0]),0,1,0)
-            removePlayer(killedPlayer[0],1)
+            removePlayer(killedPlayer[0])
 	c.setLogChat(0)
         #******************END TOWN*******************
         return 1
@@ -274,7 +269,8 @@ def standardTurn():
 def listenerThread():
     global round,all
     while 1:
-        i=raw_input().strip('\n')
+	try: i=raw_input().strip('\n')
+	except: break
 	if i=='':
 	    pass
         elif i=='help':
@@ -292,7 +288,7 @@ def listenerThread():
             player=i.split(' ')[1]
             c.broadcast('Moderator removed %s'%player,all)
 	    c.log('Moderator removed %s'%player,0,1,0)
-            removePlayer(player,0)
+            removePlayer(player)
 	elif i=='skip':
 	    c.skip()
 	    #c.broadcast('Moderator skipped current section.',all)
@@ -300,6 +296,7 @@ def listenerThread():
 	else:
 	    c.broadcast('moderator-%s'%i,all)
 	    #c.log('moderator-'+i,0)
+	time.sleep(.1)
 
 publicLogName=''
 moderatorLogName=''
@@ -307,37 +304,41 @@ listenThread=None
 chatThread=None
 
 def main():
-    global all,round,publicLogName,moderatorLogName
+    global all,round,publicLogName,moderatorLogName, winner,gameNumber
 
     if test:
 	publicLogName='log/dummy.log'
 	moderatorLogName='log/dummy-m.log'
-	next=9999
+	os.chmod(moderatorLogName, 0700)
+	gameNumber=9999
     else:
     	nextround=open('log/nextround','r')
-    	next=int(nextround.readline().strip('\n'))
+    	gameNumber=int(nextround.readline().strip('\n'))
     	nextround.close()
     	nextround=open('log/nextround','w')
-   	nextround.write(str(next+1))
+   	nextround.write(str(gameNumber+1))
    	nextround.close()
-	msg='Game %d starts in %d seconds.'%(next,timeTillStart)
+	msg='Game %d starts in %d seconds.'%(gameNumber,timeTillStart)
     	#msg='Game '+str(next)+' starts in '+str(timeTillStart)+' seconds.'
 	os.system('echo "%s" | wall'%msg)
-    	publicLogName='log/%d.log'%next
-        moderatorLogName='log/%dm.log'%next
+    	publicLogName='log/%d.log'%gameNumber
+        moderatorLogName='log/%dm.log'%gameNumber
+	
+    	if i['moderatorLogMode']==1:
+	    os.system('touch '+moderatorLogName)
+	    os.system('chmod 700 '+moderatorLogName)
+    	else:
+    	    os.system('cp log/template '+moderatorLogName)
+
+	
 
     #pass the necessary input variables into the communication script
     c.setVars(i['readVulnerability'],i['imposterMode'],publicLogName,moderatorLogName)
 
-    if i['moderatorLogMode']==1:
-	os.system('touch '+moderatorLogName)
-	os.system('chmod 700 '+moderatorLogName)
-    else:
-    	os.system('cp log/template '+moderatorLogName)
-
-    c.log('GAME: '+str(next),1,1,1)
+    c.log('GAME: %d'%gameNumber,1,1,1)
 
     listenThread=Thread(target=listenerThread,args=[])
+    listenThread.setDaemon(True)
     listenThread.start()
     c.log('\nmoderator listener thread started',1,0,1)
 
@@ -352,6 +353,7 @@ def main():
     c.log('roles assigned',1,0,1)
 
     chatThread=Thread(target=c.groupChat,args=[all,])
+    chatThread.setDaemon(True)
     chatThread.start()
     c.log('group chat thread started',1,0,1)
 
@@ -375,25 +377,23 @@ def main():
 
 
     #end game
-    if len(wolves)==0:
-        c.log('\nTownspeople win!',0,1,0)
-        c.broadcast('Townspeople win!',all)
-    elif len(wolves)==len(all):
-        c.log('\nWerewolves win!',0,1,0)
-        c.broadcast('Werewolves win!',all)
-    c.broadcast('win',all)
+    if len(wolves)==0: winner='Townspeople win!'
+    elif len(wolves)==len(all): winner='Werewolves win!'
+    c.log('\n%s'%winner,0,1,0)
+    c.broadcast(winner,all)
+    c.broadcast('close',all)
+	
 
     c.log('End',1,1,1)
-    if not test: os.chmod('log/%sm.log'%str(next),0744)#os.system('chmod 744 log/'+str(next)+'m.log')
+    if not test: os.chmod('log/%dm.log'%gameNumber,0744)#os.system('chmod 744 log/'+str(next)+'m.log')
     #logFile.close()
-    if not test:
-        os.system('echo "Game %s is over." | wall'%str(next))
+    if not test: os.system('echo "Game %d is over.  %s" | wall'%(gameNumber,winner))
     #os.system('killall -s 9 cat 2> /dev/null')
     #os.system('killall -s 9 sh 2> /dev/null')
-    os.kill(os.getpid(),signal.SIGKILL)
+    #os.kill(os.getpid(),signal.SIGKILL)
     #listenThread._Thread__stop()
     #chatThread._Thread__stop()
-    #sys.exit()
+    exit()
 
 if __name__=='__main__':
     main()

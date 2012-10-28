@@ -75,37 +75,45 @@ def handleConnections(timeTillStart, randomize):
     f=open('names.txt','r').read().split('\n')[0:-1]
     if randomize: random.shuffle(f)
 
-    connectionThreads=[]
     for conn in range(1,len(f)):
 	if randomize: name=f[conn]
 	else: name='group%s'%(str(conn))
 		
         t=Thread(target=connect,args=[str(conn),str(name)])
+	t.setDaemon(True)
         t.start()
-	connectionThreads.append(t)
 
     sleep(int(timeTillStart))
-    for t in connectionThreads: t._Thread__stop()
     isHandlingConnections=0
     all=conns
     return conns
 
 def connect(num,name):
-    #global isHandlingConnections
+	#global isHandlingConnections
 
-    inPipe='%stos'%num
-    outPipe='sto%s'%num
+	inPipe='%stos'%num
+	outPipe='sto%s'%num
+	duration=.1
 
-    connInput=''
-    while connInput!='connect' and isHandlingConnections:
-        try: connInput=recv(inPipe)[2]
-	except Exception, p: pass
+	connected=False
+	connInput=''
+	try:
+		while not connected:#connInput!='connect':
+			try: connInput=recv(inPipe)[2]
+			except Exception, p: pass
 
-        if connInput=='connect':
-            log('%s connected'%name,1,0,1)
-            send('Hello, %s.  You are connected.  Please wait for the game to start.'%name,outPipe)
-	    conns[name]=[inPipe,outPipe]
-	else: time.sleep(.1)
+			if connInput=='connect' and isHandlingConnections:
+				log('%s connected'%name,1,0,1)
+				send('Hello, %s.  You are connected.  Please wait for the game to start.'%name,outPipe)
+				conns[name]=[inPipe,outPipe]
+				connected=True
+			elif not isHandlingConnections:
+				duration=1
+				send('Game already started.  Please wait for next game.',outPipe)
+				send('close',outPipe)
+			time.sleep(duration)
+	except:
+		pass
 
 
 def broadcast(msg, players):
@@ -175,6 +183,7 @@ def clear(pipes):
     for p in pipes:
         for i in range(10):
             t=Thread(target=recv,args=[p])
+	    t.setDaemon(True)
             t.start()
 
 deathspeech=0
@@ -206,6 +215,7 @@ def groupChat(players):
     for player in players.keys():
         newPlayers=modPlayers(player, players)
         t = Thread(target=multiRecv,args=[player, newPlayers])
+	t.setDaemon(True)
         t.start()
         
 #remove one pipe from pipes
