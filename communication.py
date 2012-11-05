@@ -117,13 +117,15 @@ def connect(num,name):
 
 
 def broadcast(msg, players):
-    global logChat
-    log(msg,1,logChat,1)
+	global logChat
+	log(msg,1,logChat,1)
+	
+	time.sleep(.1)
 
-    for player in players.keys():
-	try:
-	    send(msg,players[player][1])
-        except Exception, p: pass#log('broadcast error:%s'%p,1,0,1)
+	for player in players.keys():
+		try:
+			send(msg,players[player][1])
+		except Exception, p: pass#log('broadcast error:%s'%p,1,0,1)
             
 
 def send(msg, pipe):
@@ -132,13 +134,14 @@ def send(msg, pipe):
     try:
 	sender=pipe.split('to')[0]
 	#f=open(pipeRoot+pipe+'D/'+pipe,'w')
-	#f.write(':'+sender+':'+msg)
+	#f.write(':'+sender+':'+msg+'\n')
 	#f.close()
 	if len(msg)!=0:	
-	    msg='(echo :%s:%s > %s%sD/%s) 2> /dev/null &'%(sender,msg,pipeRoot,pipe,pipe)
-            o=os.popen(msg)
+		msg='(echo :%s:%s > %s%sD/%s) 2> /dev/null &'%(sender,msg,pipeRoot,pipe,pipe)
+		o=os.popen(msg)
     except Exception, p:
-        log('send error:%s'%p,1,0,1)
+		pass
+        #log('send error:%s'%p,1,0,1)
 
 def recv(pipe):
    	global readVulnerability, imposterMode
