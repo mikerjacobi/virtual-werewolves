@@ -40,6 +40,12 @@ test=int(i['test'])
 giveDeathSpeech=int(i['deathSpeech'])
 numWolves=int(i['numWolves'])
 
+#moderator assignment global vars
+wolfChoose=int(i['wolfChoose'])
+moderatorAssignment=0
+moderatorAssignmentContinue=0
+moderatorAssignmentList=[]
+
 #group people by roles
 all={}
 wolves={}
@@ -96,34 +102,70 @@ def quitGame(Signal, frame):
 signal.signal(signal.SIGINT, quitGame)
 
 def assign():
-	global all, wolves, witch
-    #balance the game accordingly
+	global all, wolves, witch,moderatorAssignment,moderatorAssignmentContinue,moderatorAssignmentList,moderatorAssignmentChoices
 	numPlayers = len(all.keys())
 
-	config=['W']
-	for i in range(numWolves): config.append('w')
-	for i in range(numPlayers-numWolves-1): config.append('t')
+	if not wolfChoose: #randomly assign roles
+		config=['W']
+		for i in range(numWolves): config.append('w')
+		for i in range(numPlayers-numWolves-1): config.append('t')
 
-    #randomize roles
-	random.shuffle(config)
+    	#randomize roles
+		random.shuffle(config)
 
-    #assign roles and inform players
-	for i in range(len(all.keys())):
-		player=all.keys()[i]
+    	#assign roles and inform players
+		for i in range(len(all.keys())):
+			player=all.keys()[i]
 
-		if config[i]=='w':
-			wolves[player]=all[player]
-			role='wolf'
-		elif config[i]=='W':
-			witch[player]=all[player]
-			townspeople[player]=all[player]
-			role='witch'
-		else:
-			townspeople[player]=all[player]
-			role='townsperson'
+			if config[i]=='w':
+				wolves[player]=all[player]
+				role='wolf'
+			elif config[i]=='W':
+				witch[player]=all[player]
+				townspeople[player]=all[player]
+				role='witch'
+			else:
+				townspeople[player]=all[player]
+				role='townsperson'
+			c.send('~~~~~ YOU ARE A %s ~~~~~'%role, all[player][1])
+	else: #moderator chooses roles
+		moderatorAssignment=1
+		print '\nModerator Assignment:'
+		moderatorAssignmentChoices=all.keys()
+		print 'Choose wolves from %s. enter "done" when finished.'%str(sorted(moderatorAssignmentChoices))
+		moderatorAssignmentContinue=1
+		while moderatorAssignmentContinue==1:
+			time.sleep(1)
+		wolfList=moderatorAssignmentList
+		moderatorAssignmentList=[]	
 
-	try: c.send('~~~~~ YOU ARE A %s ~~~~~'%role, all[player][1])
-	except Exception, p: c.log('ASSIGNERROR:%s'%p,1,0,1)
+		moderatorAssignmentChoices=[]
+		for p in all.keys():
+			if p not in wolfList: moderatorAssignmentChoices.append(p)
+		print 'Choose witch from %s.'%str(sorted(moderatorAssignmentChoices))
+		moderatorAssignmentContinue=1
+		while moderatorAssignmentContinue==1:
+			if len(moderatorAssignmentList)==1: 
+				if moderatorAssignmentList[0] in wolfList:
+					moderatorAssignmentList=[]
+				else: break
+			else: time.sleep(.1)
+		witchList=moderatorAssignmentList
+		moderatorAssignment=0
+
+		for player in all.keys():
+			if player in witchList:
+				witch[player]=all[player]
+				role='witch'
+			elif player in wolfList:
+				wolves[player]=all[player]
+				role='wolf'
+			else: #player is a townsperson
+				townspeople[player]=all[player]
+				role='townsperson'
+			c.send('~~~~~ YOU ARE A %s ~~~~~'%role, all[player][1])
+
+
 
 def standardTurn():
 	global all, witch, potions, towntalktime,wolftalktime
@@ -257,34 +299,47 @@ def standardTurn():
 		return 0
 
 def listenerThread():
-    global round,all
+    global round,all,moderatorAssignment,moderatorAssignmentContinue,moderatorAssignmentList,moderatorAssignmentChoices
     while 1:
 	try: i=raw_input().strip('\n')
 	except: break
 	if i=='':
-	    pass
-        elif i=='help':
-	    os.system('cat moderatorHelp.txt')
-        elif i=='status':
-	    print 'round %d'%round
-            print 'all: %s'%str(all.keys())
-            print 'wolves: %s'%str(wolves.keys())
-
-            wStatus=': '
-            wStatus+='%d poisons, '%potions[0]
-            wStatus+='%d heals '%potions[1]
-            print 'witch: %s%s'%(str(witch.keys()),wStatus)
-        elif i[0:4]=='kill':
-            player=i.split(' ')[1]
-            c.broadcast('Moderator removed %s'%player,all)
-	    c.log('Moderator removed %s'%player,0,1,0)
-            removePlayer(player)
+		pass
+	elif moderatorAssignment==1: #handle moderator assignment
+		if i=='done':
+			moderatorAssignmentContinue=0
+		elif i in moderatorAssignmentChoices and i not in moderatorAssignmentList:
+			moderatorAssignmentList.append(i)
+			print 'added %s'%i
+		else:
+			print 'invalid.'
+	elif i=='help':
+		#x=s.Popen(['ls','-l'],stdout=s.PIPE).communicate()[0].split('\n')
+		os.system('cat moderatorHelp.txt')
+	elif i=='status':
+		print 'round %d'%round
+		print 'all: %s'%str(all.keys())
+		print 'wolves: %s'%str(wolves.keys())
+		wStatus=': '
+		wStatus+='%d poisons, '%potions[0]
+		wStatus+='%d heals '%potions[1]
+		print 'witch: %s%s'%(str(witch.keys()),wStatus)
+	elif i[0:4]=='kill':
+		player=i.split(' ')[1]
+		c.broadcast('Moderator removed %s'%player,all)
+		c.log('Moderator removed %s'%player,0,1,0)
+		removePlayer(player)
 	elif i=='skip':
 	    c.skip()
 	    #c.broadcast('Moderator skipped current section.',all)
 	    c.log('Moderator skipped current section.',0,1,0)
 	else:
-	    c.broadcast('moderator-%s'%i,all)
+		audience=i.split(' ')[0]
+		if audience=='all': c.broadcast('moderator to all-%s'%i[4:],all)
+		elif audience=='wolves': c.broadcast('moderator to wolves-%s'%i[7:],wolves)
+		elif audience=='witch': c.broadcast('moderator to witch-%s'%i[6:],witch)
+		else: print '***Start your message with "all", "wolves", or "witch". ***'
+
 	time.sleep(.1)
 
 publicLogName=''
