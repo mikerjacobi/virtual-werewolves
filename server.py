@@ -1,8 +1,8 @@
 #Author: Mike Jacobi
-#Virtual Mafia Game
+#Virtual Werewolves
 #Instructors: Roya Ensafi, Jed Crandall
 #Cybersecurity, Spring 2012
-#server.py is the automated moderator for Mafia
+#server.py is the automated moderator for Virtual Werewolves
 
 import traceback
 import datetime
@@ -16,7 +16,7 @@ import threading
 from threading import Thread
 
 i={}
-inputVars=open('mafia.config','r').read().split('\n')
+inputVars=open('config','r').read().split('\n')
 for var in inputVars:
 	var=var.strip('\n').split('=')
 	key=var[0]

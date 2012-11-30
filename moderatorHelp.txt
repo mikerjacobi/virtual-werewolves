@@ -1,4 +1,0 @@
-status-status update on the game
-kill <client>-removes <client> from the game
-skip-prematurely ends a debate session
-

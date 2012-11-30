@@ -1,5 +1,5 @@
 #Author: Mike Jacobi !!!
-#Virtual Mafia Game
+#Virtual Werewolves
 #Instructors: Roya Ensafi, Jed Crandall
 #Cybersecurity, Spring 2012
 #This script has generic helper functions used by the Mafia server and clients
@@ -24,7 +24,7 @@ readVulnerability=1
 imposterMode=1
 isSilent=1
 def setVars(passedReadVulnerability, passedImposterMode, publicLogName, moderatorLogName):
-    #descriptions of these variables can be seen in the mafia.config file
+    #descriptions of these variables can be seen in the config file
     global readVulnerability, imposterMode, logName,mLogName
     readVulnerability=int(passedReadVulnerability)
     imposterMode=int(passedImposterMode)

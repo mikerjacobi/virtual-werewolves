@@ -1,8 +1,7 @@
 #Author: Mike Jacobi
-#Virtual Mafia Game
-#Instructors: Roya Ensafi, Jed Crandall
-#Cybersecurity, Spring 2012
-#This is an example client for players to connect to the Mafia server
+#Virtual Werewolves
+#Roya Ensafi, Jed Crandall
+#This is an example client for players to connect to the Werewolves server
 
 import signal
 import sys

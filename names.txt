@@ -8,7 +8,6 @@ dragon
 GIjoe
 android
 kitten
-LOLwolf
 maru
 tim The Enchanter
 metric
@@ -20,7 +19,7 @@ rex
 man bear pig
 helicopter
 blue
-shoe
+xu
 tacoBell
 panda
 apple sauce
