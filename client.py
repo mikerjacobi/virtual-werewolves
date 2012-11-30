@@ -1,7 +1,23 @@
 #Author: Mike Jacobi
-#Virtual Werewolves
-#Roya Ensafi, Jed Crandall
-#This is an example client for players to connect to the Werewolves server
+#Test and Update: Xu Zhang
+#Virtual Werewolf Game
+#Collaborators: Roya Ensafi, Jed Crandall
+#This is an example client for players to connect to the Mafia server
+
+#Copyright (c) 2012 Mike Jacobi, Xu Zhang, Roya Ensafi, Jed Crandall
+#This file is part of Virtual Werewolf Game.
+
+#Virtual werewolf is free software: you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
+#Virtual werewolf is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with Virtual werewolf.  If not, see <http://www.gnu.org/licenses/>.
 
 import signal
 import sys
