@@ -1,0 +1,67 @@
+#Author: Mike Jacobi
+#this is the configuration file for Virtual Werewolves 
+#these variables must take the form: var=value (no whitespace)
+
+
+#1 for debug mode; 0 for normal play mode
+test=1
+
+#duration (in seconds) for the corresponding phase of the game
+timeTillStart=61
+wolfTalkTime=120
+wolfVoteTime=60
+townTalkTime=240
+townVoteTime=60
+witchVoteTime=60
+deathSpeechTime=60
+
+#number of witch poisons
+kill=1
+#number of witch health potions
+heal=1
+
+#number of wolves
+numWolves=2
+
+#manually choose players to be wolves.  This will prompt the moderator with a phase prior to game starting with a list of players and the moderator must choose the players they wish to be wolves.  this is useful in case one (or more) players have figured out a way to identity wolves, and you wish to force them to be wolves to keep the game interesting for others. Note, <numWolves> plays no role if this is enabled.  1: wolfChoose is enabled; 0: wolfChoose is disabled. 
+wolfChoose=1
+
+#allow death speechs.  1: players will give a speech upon dying; 0: will not give speech
+deathSpeech=0
+
+#randomize names of players.  This option is good to enable if you are playing multiple games with everybody in the same room.  It will prevent the trivial attack of memorizing game names and simply listening for that player to type.
+randomizeNames=0
+
+#pipe read vulnerability
+#this variable determines the method in which the server reads from pipes
+#the first method has the server issuing a 'cat' of each player's pipe,
+#    such that it spawns a new process (and can be viewed with a ps aux)
+#the second method has the server issuing an 'open' of each player's pipe,
+#    such that it does not spawn a new process.
+#values: 1 - 'cat' method; 0 - 'open' method
+readVulnerability=0
+
+
+#moderator log vulnerability
+#methods to create the moderator log file
+#1 for diatomic creation (vulnerable to opening the filehandle prior to chmod)
+#0 for atomic creation:  'cp'ing a correctly chmodded file as a new moderator log file
+moderatorLogMode=0
+
+#imposter vulnerability
+#players can pose as other players in group chat with this vulnerability on
+#1 - players can pose as other players
+#0 - players are unable to pose as other players
+imposterMode=0
+
+#wolf voting variables: 
+#These variables enable the ability to force communication during chat phases
+#wolves must vote unanimously to eat someone
+wolfUnanimous=1
+#wolves are not informed of who their teammates voted for
+wolfSilentVote=1
+
+#town voting variables
+townUnanimous=0
+townSilentVote=0
+
